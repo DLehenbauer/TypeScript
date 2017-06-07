@@ -16,6 +16,8 @@ namespace ts.wasm {
         Debug.fail(`Unexpected node '${getTextOfNode(node)}' in ${arguments.callee.caller}.  (kind='${eval(`ts.SyntaxKind[${node.kind}]`)}')`);
     }
 
+    /** function takes in node, finds the type and then returns the appropriate opCode 
+    */
     function toValueType(type: Type) {
         if (type.flags & TypeFlags.Intrinsic) {
             const intrinsicType = <IntrinsicType>type;
