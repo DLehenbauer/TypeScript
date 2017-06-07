@@ -58,6 +58,7 @@ namespace ts {
         if (getEmitModuleKind(compilerOptions) !== ModuleKind.Wasm) {
             forEachEmittedFile(host, emitSourceFileOrBundle, transform.transformed, emitOnlyDtsFiles);
         }
+        //if emitted output is for wasm, invoke the ts.wasm.emit function with appropriate values 
         else {
             ts.wasm.emit(typeCheckerForWasm, host, emitterDiagnostics, transform.transformed, compilerOptions.outFile);
         }
