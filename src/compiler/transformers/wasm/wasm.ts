@@ -344,6 +344,15 @@ namespace ts.wasm {
             case SyntaxKind.LessThanToken:
                 wasmBlock.code.f64.comparisonLT();
                 break;
+            case SyntaxKind.EqualsEqualsToken:
+                wasmBlock.code.f64.equals();
+                break;
+            case SyntaxKind.GreaterThanEqualsToken:
+                wasmBlock.code.f64.comparisonGE();
+                break;
+            case SyntaxKind.LessThanEqualsToken:
+                wasmBlock.code.f64.comparisonLE();
+                break;
             default:
                 unexpectedNode(tsOperator);
                 break;
