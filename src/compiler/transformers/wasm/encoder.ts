@@ -287,6 +287,10 @@ namespace ts.wasm {
 
         /** Replace the top two values on the stack with their quotient. */
         div(): void;
+
+        comparisonGT(): void;
+
+        comparisonLT(): void;
     }
 
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
@@ -299,6 +303,8 @@ namespace ts.wasm {
         sub() { this.encoder.op(opcode.f64_sub); }
         mul() { this.encoder.op(opcode.f64_mul); }
         div() { this.encoder.op(opcode.f64_div); }
+        comparisonGT() { this.encoder.op(opcode.f64_gt); }
+        comparisonLT() { this.encoder.op(opcode.f64_lt); }
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.

@@ -338,6 +338,12 @@ namespace ts.wasm {
             case SyntaxKind.SlashToken:
                 wasmBlock.code.f64.div();
                 break;
+            case SyntaxKind.GreaterThanToken:
+                wasmBlock.code.f64.comparisonGT();
+                break;
+            case SyntaxKind.LessThanToken:
+                wasmBlock.code.f64.comparisonLT();
+                break;
             default:
                 unexpectedNode(tsOperator);
                 break;
