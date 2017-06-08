@@ -288,9 +288,23 @@ namespace ts.wasm {
         /** Replace the top two values on the stack with their quotient. */
         div(): void;
 
+        /** Replace the top two values on the stack with an int32 denoting if the first value is greater than the second */
         comparisonGT(): void;
 
+        /** Replace the top two values on the stack with an int32 denoting if the first value is less than the second */
         comparisonLT(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the two values are equal */
+        equals(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the first value is greater
+         *  than or equal to the second */
+        comparisonGE(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the first value is less
+         *  than or equal to the second */
+        comparisonLE(): void;
+
     }
 
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
@@ -305,6 +319,9 @@ namespace ts.wasm {
         div() { this.encoder.op(opcode.f64_div); }
         comparisonGT() { this.encoder.op(opcode.f64_gt); }
         comparisonLT() { this.encoder.op(opcode.f64_lt); }
+        equals() { this.encoder.op(opcode.f64_eq); }
+        comparisonGE() { this.encoder.op(opcode.f64_ge); }
+        comparisonLE() { this.encoder.op(opcode.f64_le); }
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
