@@ -47,6 +47,8 @@ namespace ts.wasm {
             this.uint32(this.f64Bytes.getUint32(4, /* little-endian */ true));  // Emit bytes 4-7
         }
 
+        
+
         /** Write an unsigned 32b integer as LEB128. */
         public varuint32(u32: number) {
             assert_is_uint32(u32);
@@ -307,6 +309,15 @@ namespace ts.wasm {
 
     }
 
+    /* Common base for 32 int numeric operations */
+    export interface NumericOpEncoder32 {
+        /** Push the immediate constant 'value' on to the stack. */
+        const(value: number): void;
+
+        /** Replace the top two values on the stack with their remainder. */
+        rem(): void;
+    }
+
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
     class F64OpEncoder implements NumericOpEncoder {
         constructor (private encoder: RawOpEncoder) { }
@@ -322,6 +333,15 @@ namespace ts.wasm {
         equals() { this.encoder.op(opcode.f64_eq); }
         comparisonGE() { this.encoder.op(opcode.f64_ge); }
         comparisonLE() { this.encoder.op(opcode.f64_le); }
+    }
+
+    /** Private implementation of NumericOpEncoder32 for encoding operations on 32b integers. */
+    class I320pEncoder implements NumericOpEncoder32 {
+        constructor (private encoder: RawOpEncoder) {}
+
+        // NumericOpEncoder32 implementation
+        const(value: number) { this.encoder.op_i32(opcode.i32_const, value); }
+        rem() { this.encoder.op(opcode.i32_rem_s); }
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
@@ -341,10 +361,16 @@ namespace ts.wasm {
             this.encoder.varuint32(immediate);
         }
 
-        /** Write the given opcode with one 64b floating point immediate.  */
+        /** Write the given opcode with one 64b floating point immediate. */
         public op_f64(opcode: opcode, f64: number) {
             this.encoder.op(opcode);
             this.encoder.float64(f64);
+        }
+
+        /** Write the given opcode with one 32b integer (non-floating type) immediate. */
+        public op_i32(opcode: opcode, i32: number) {
+            this.encoder.op(opcode);
+            this.encoder.varint32(i32);
         }
 
         /** Returns the array of bytes containing the encoded byte code. */
@@ -358,6 +384,9 @@ namespace ts.wasm {
 
         /** Operators for 64b floating point numbers. */
         readonly f64: NumericOpEncoder = new F64OpEncoder(this.encoder);
+
+        /** Operators for 32b integers */
+        readonly i32: NumericOpEncoder32 = new I320pEncoder(this.encoder);
 
         /** Array of bytes containing the encoded opcodes and immediates. */
         public get buffer() { return this.encoder.buffer; }
