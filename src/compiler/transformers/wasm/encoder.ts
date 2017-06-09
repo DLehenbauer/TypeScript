@@ -307,7 +307,6 @@ namespace ts.wasm {
          *  than or equal to the second */
         comparisonLE(): void;
 
-<<<<<<< HEAD
     }
 
     /* Common base for 32 int numeric operations */
@@ -317,8 +316,7 @@ namespace ts.wasm {
 
         /** Replace the top two values on the stack with their remainder. */
         rem(): void;
-=======
->>>>>>> 87a0cfa5ef9701638a617535fa8f44b6716b6d3c
+
     }
 
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
@@ -336,7 +334,6 @@ namespace ts.wasm {
         equals() { this.encoder.op(opcode.f64_eq); }
         comparisonGE() { this.encoder.op(opcode.f64_ge); }
         comparisonLE() { this.encoder.op(opcode.f64_le); }
-<<<<<<< HEAD
     }
 
     /** Private implementation of NumericOpEncoder32 for encoding operations on 32b integers. */
@@ -346,8 +343,6 @@ namespace ts.wasm {
         // NumericOpEncoder32 implementation
         const(value: number) { this.encoder.op_i32(opcode.i32_const, value); }
         rem() { this.encoder.op(opcode.i32_rem_s); }
-=======
->>>>>>> 87a0cfa5ef9701638a617535fa8f44b6716b6d3c
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
