@@ -23,7 +23,7 @@ namespace ts.wasm {
             const intrinsicType = <IntrinsicType>type;
             switch (intrinsicType.intrinsicName) {
                 case "number":
-                //    return value_type.i32;
+                    // return value_type.i32;
                     return value_type.f64;
                 case "boolean":
                     return value_type.i32;
@@ -356,6 +356,21 @@ namespace ts.wasm {
                 break;
             case SyntaxKind.PercentToken:
                 wasmBlock.code.i32.rem();
+                break;
+            case SyntaxKind.BarToken:
+                wasmBlock.code.i32.bitOR();
+                break;
+            case SyntaxKind.AmpersandToken:
+                wasmBlock.code.i32.bitAND();
+                break;
+            case SyntaxKind.CaretToken:
+                wasmBlock.code.i32.bitXOR();
+                break;
+            case SyntaxKind.LessThanLessThanToken:
+                wasmBlock.code.i32.bitLeftShift();
+                break;
+            case SyntaxKind.GreaterThanGreaterThanToken:
+                wasmBlock.code.i32.bitRightShift();
                 break;
             default:
                 unexpectedNode(tsOperator);
