@@ -18,22 +18,34 @@ namespace ts.wasm {
 
     /** function takes in node, finds the type and then returns the appropriate opCode 
     */
-    function toValueType(type: Type) {
-        if (type.flags & TypeFlags.Intrinsic) {
-            const intrinsicType = <IntrinsicType>type;
-            switch (intrinsicType.intrinsicName) {
-                case "number":
-                    //return value_type.i32;
-                    return value_type.f64;
-                case "boolean":
-                    return value_type.i32;
-                default:
-                    Debug.fail(`Unexpected intrinsic type '${intrinsicType.intrinsicName}'.`);
-                    break;
-            }
+        function toValueType(type: Type) {
+        if (type.flags & TypeFlags.NumberLike){
+            // return value_type.i32;
+            return value_type.f64;
         }
 
-        Debug.fail(`Unexpected type '${type.symbol.name}'.`);
+        else if (type.flags & TypeFlags.BooleanLike){
+            return value_type.i32;
+        }
+        else {
+            Debug.fail(`Unexpected type '${type.symbol ? type.symbol.name : "unknown"}'. (flags = '${hex32(type.flags)}')`);
+        }
+    }
+
+   function toValueTypeReturn(type: Type) {
+        if (type.flags & TypeFlags.NumberLike){
+            // return value_type.i32;
+            return value_type.f64;
+        }
+
+        else if (type.flags & TypeFlags.BooleanLike){
+            return value_type.i32;
+        }
+        else {
+            Debug.fail(`Unexpected type '${type.symbol ? type.symbol.name : "unknown"}'. (flags = '${hex32(type.flags)}')`);
+        }
+
+    
     }
 
     export function valueTypeToOpcode(type?: value_type) {
@@ -294,7 +306,7 @@ namespace ts.wasm {
             paramDecl => {
                 return {
                     symbol: paramDecl.symbol,
-                    type: toValueType(wasmModule.resolver.getTypeOfSymbolAtLocation(paramDecl.symbol, paramDecl))
+                    type: toValueTypeReturn(wasmModule.resolver.getTypeOfSymbolAtLocation(paramDecl.symbol, paramDecl))
                 };
             });
 
