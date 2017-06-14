@@ -23,9 +23,9 @@ namespace ts.wasm {
             const intrinsicType = <IntrinsicType>type;
             switch (intrinsicType.intrinsicName) {
                 case "number":
-                    // return value_type.i32;
                     return value_type.f64;
                 case "boolean":
+                    //return value_type.f64;
                     return value_type.i32;
                 default:
                     Debug.fail(`Unexpected intrinsic type '${intrinsicType.intrinsicName}'.`);
@@ -34,6 +34,17 @@ namespace ts.wasm {
         }
 
         Debug.fail(`Unexpected type '${type.symbol.name}'.`);
+    }
+
+    export function valueTypeToOpcode(type?: value_type) {
+        switch(type) {
+            case value_type.f64:
+                return opcode.i64_add;
+            case value_type.i32:
+                return opcode.i64_div_s;
+            default:
+                return opcode.grow_memory;
+        }
     }
 
     /** In memory representation of a wasm module, built while traversing the TypeScript AST. */
@@ -200,7 +211,7 @@ namespace ts.wasm {
     export class WasmBlock {
         private _code: OpEncoder = new OpEncoder();
 
-        constructor(private module: WasmModule, private locals: WasmScope) {}
+        constructor(public module: WasmModule, private locals: WasmScope) {}
 
         private get resolver() { return this.module.resolver; }
 
@@ -313,11 +324,68 @@ namespace ts.wasm {
 
                     wasmBlock.code.return();
                     break;
+                case SyntaxKind.IfStatement:
+                    const tsIfStmt = <IfStatement>tsStatement;
 
+                    wasmBlock.code.f64.startBlock();
+
+                    const blockType = value_type.f64;
+                    wasmBlock.code.f64.addBlockType(blockType);
+
+                    let numberElseIfStatements = countElseIfStatements(tsIfStmt);
+                    for(var i = 0; i < numberElseIfStatements; i++) {
+                        wasmBlock.code.f64.startBlock();
+                        wasmBlock.code.f64.addBlockType();
+                    }
+
+                    visitStatement(wasmBlock, tsIfStmt, true);
+                    
+                    break;
                 default:
                     unexpectedNode(tsStatement);
                     break;
             }
+        }
+    }
+
+    function countElseIfStatements(tsStatement: IfStatement) {
+        tsStatement = <IfStatement>tsStatement.elseStatement;
+        let count = 0;
+        while(hasElseStatement(tsStatement)) {
+            tsStatement = <IfStatement>tsStatement.elseStatement;
+            count++;
+        }
+        return count;
+    }
+
+    function hasElseStatement(tsStatement: IfStatement) {
+        let elseStatement = tsStatement.elseStatement;
+        if(elseStatement) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    function visitStatement(wasmBlock: WasmBlock, tsStatement: Statement, addReturn?: boolean) {
+        switch(tsStatement.kind) {
+
+            case SyntaxKind.IfStatement:
+                const tsIfStatement = <IfStatement>tsStatement;
+                visitExpression(wasmBlock, tsIfStatement.expression);
+                wasmBlock.code.f64.breakIf(0);
+                visitStatement(wasmBlock, tsIfStatement.thenStatement);
+                if(addReturn) {
+                    wasmBlock.code.f64.return();
+                }
+                wasmBlock.code.f64.break(1);
+                wasmBlock.code.f64.endBlock();
+                break;
+            case SyntaxKind.Block:
+                const statementAsBlock = <Block>tsStatement;
+                visitBlock(wasmBlock, statementAsBlock);
+                break;
         }
     }
 
@@ -358,19 +426,7 @@ namespace ts.wasm {
                 wasmBlock.code.i32.rem();
                 break;
             case SyntaxKind.BarToken:
-                wasmBlock.code.i32.bitOR();
-                break;
-            case SyntaxKind.AmpersandToken:
-                wasmBlock.code.i32.bitAND();
-                break;
-            case SyntaxKind.CaretToken:
-                wasmBlock.code.i32.bitXOR();
-                break;
-            case SyntaxKind.LessThanLessThanToken:
-                wasmBlock.code.i32.bitLeftShift();
-                break;
-            case SyntaxKind.GreaterThanGreaterThanToken:
-                wasmBlock.code.i32.bitRightShift();
+                wasmBlock.code.i32.bitOr();
                 break;
             default:
                 unexpectedNode(tsOperator);

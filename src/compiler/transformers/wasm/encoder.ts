@@ -307,6 +307,18 @@ namespace ts.wasm {
          *  than or equal to the second */
         comparisonLE(): void;
 
+        startBlock(): void;
+
+        addBlockType(type?: value_type): void;
+
+        breakIf(level: number): void;
+
+        return(): void;
+
+        break(level: number): void;
+
+        endBlock(): void;
+
     }
 
     /* Common base for 32 int numeric operations */
@@ -317,21 +329,8 @@ namespace ts.wasm {
         /** Replace the top two values on the stack with their remainder. */
         rem(): void;
 
-        /** Replace the top two values on the stack with an int32 denoting the bitwise OR of the two values. */
-        bitOR(): void;
+        bitOr(): void;
 
-        /** Replace the top two values on the stack with an int32 denoting the bitwise AND of the two values. */
-        bitAND(): void;
-
-        /** Replace the top two values on the stack with an int32 denoting the bitwise XOR of the two values. */
-        bitXOR(): void;
-
-        /** Replace the top two values on the stack with an int32 denoting the first value left-shifted by the number of bits indicated by the second value. */
-        bitLeftShift(): void;
-
-        /** Replace the top two values on the stack with an int32 denoting the first value right-shifted by the number of bits indicated by the second value.
-         * Does not check for overflows with negative numbers. */
-        bitRightShift(): void;
     }
 
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
@@ -349,6 +348,12 @@ namespace ts.wasm {
         equals() { this.encoder.op(opcode.f64_eq); }
         comparisonGE() { this.encoder.op(opcode.f64_ge); }
         comparisonLE() { this.encoder.op(opcode.f64_le); }
+        startBlock() { this.encoder.op(opcode.block); }
+        addBlockType(type?: value_type) { this.encoder.op(valueTypeToOpcode(type)); }
+        breakIf(level: number) { this.encoder.op_f64(opcode.br_if, level); }
+        return() { this.encoder.op(opcode.return); }
+        break(level: number) { this.encoder.op_f64(opcode.br, level); }
+        endBlock() { this.encoder.op(opcode.end); }
     }
 
     /** Private implementation of NumericOpEncoder32 for encoding operations on 32b integers. */
@@ -358,11 +363,7 @@ namespace ts.wasm {
         // NumericOpEncoder32 implementation
         const(value: number) { this.encoder.op_i32(opcode.i32_const, value); }
         rem() { this.encoder.op(opcode.i32_rem_s); }
-        bitOR() { this.encoder.op(opcode.i32_or); }
-        bitAND() { this.encoder.op(opcode.i32_and); }
-        bitXOR() {this.encoder.op(opcode.i32_xor);}
-        bitLeftShift() {this.encoder.op(opcode.i32_shl);}
-        bitRightShift() {this.encoder.op(opcode.i32_shr_u);}
+        bitOr() {this.encoder.op(opcode.i32_or); }
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
