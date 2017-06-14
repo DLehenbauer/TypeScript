@@ -329,7 +329,21 @@ namespace ts.wasm {
         /** Replace the top two values on the stack with their remainder. */
         rem(): void;
 
-        bitOr(): void;
+        /** Replace the top two values on the stack with an int32 denoting the bitwise OR of the two values. */  
+        bitOR(): void;  
+
+        /** Replace the top two values on the stack with an int32 denoting the bitwise AND of the two values. */  
+        bitAND(): void;  
+
+        /** Replace the top two values on the stack with an int32 denoting the bitwise XOR of the two values. */  
+        bitXOR(): void;  
+
+        /** Replace the top two values on the stack with an int32 denoting the first value left-shifted by the number of bits indicated by the second value. */  
+        bitLeftShift(): void; 
+     
+        /** Replace the top two values on the stack with an int32 denoting the first value right-shifted by the number of bits indicated by the second value.  
+        * Does not check for overflows with negative numbers. */  
+        bitRightShift(): void; 
 
     }
 
@@ -363,7 +377,11 @@ namespace ts.wasm {
         // NumericOpEncoder32 implementation
         const(value: number) { this.encoder.op_i32(opcode.i32_const, value); }
         rem() { this.encoder.op(opcode.i32_rem_s); }
-        bitOr() {this.encoder.op(opcode.i32_or); }
+        bitOR() { this.encoder.op(opcode.i32_or); }  
+        bitAND() { this.encoder.op(opcode.i32_and); }  
+        bitXOR() {this.encoder.op(opcode.i32_xor);}  
+        bitLeftShift() {this.encoder.op(opcode.i32_shl);}  
+        bitRightShift() {this.encoder.op(opcode.i32_shr_u);} 
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
