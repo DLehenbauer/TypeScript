@@ -364,9 +364,15 @@ namespace ts.wasm {
         comparisonLE() { this.encoder.op(opcode.f64_le); }
         startBlock() { this.encoder.op(opcode.block); }
         addBlockType(type?: value_type) { this.encoder.op(valueTypeToOpcode(type)); }
-        breakIf(level: number) { this.encoder.op_f64(opcode.br_if, level); }
+        breakIf(level: number) { 
+            this.encoder.op(opcode.br_if);
+            this.encoder.uint8(level);
+        }
         return() { this.encoder.op(opcode.return); }
-        break(level: number) { this.encoder.op_f64(opcode.br, level); }
+        break(level: number) { 
+            this.encoder.op(opcode.br);
+            this.encoder.uint8(level);
+        }
         endBlock() { this.encoder.op(opcode.end); }
     }
 
@@ -411,6 +417,11 @@ namespace ts.wasm {
         public op_i32(opcode: opcode, i32: number) {
             this.encoder.op(opcode);
             this.encoder.varint32(i32);
+        }
+
+        /** Write the given immediate as an unsigned 8b integer, as-is. */
+        public uint8(u8: number) {
+            this.encoder.uint8(u8);
         }
 
         /** Returns the array of bytes containing the encoded byte code. */
