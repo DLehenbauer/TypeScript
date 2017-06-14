@@ -325,37 +325,27 @@ namespace ts.wasm {
                     wasmBlock.code.return();
                     break;
                 case SyntaxKind.IfStatement:
-                    const tsIfStmt = <IfStatement>tsStatement;
+                    let tsIfStmt = <IfStatement>tsStatement;
 
                     wasmBlock.code.f64.startBlock();
 
                     const blockType = value_type.f64;
                     wasmBlock.code.f64.addBlockType(blockType);
 
-                    let numberElseIfStatements = countElseIfStatements(tsIfStmt);
-                    for(var i = 0; i < numberElseIfStatements; i++) {
-                        wasmBlock.code.f64.startBlock();
-                        wasmBlock.code.f64.addBlockType();
+                    while(hasElseStatement(tsIfStmt)) {
+                        visitStatement(wasmBlock, tsIfStmt, true);
+                        tsIfStmt = <IfStatement>tsIfStmt.elseStatement;
                     }
-
-                    visitStatement(wasmBlock, tsIfStmt, true);
                     
+                    const elseStmt = <Statement>tsIfStmt;
+                    visitStatement(wasmBlock, elseStmt);
+                    wasmBlock.code.f64.endBlock();
                     break;
                 default:
                     unexpectedNode(tsStatement);
                     break;
             }
         }
-    }
-
-    function countElseIfStatements(tsStatement: IfStatement) {
-        tsStatement = <IfStatement>tsStatement.elseStatement;
-        let count = 0;
-        while(hasElseStatement(tsStatement)) {
-            tsStatement = <IfStatement>tsStatement.elseStatement;
-            count++;
-        }
-        return count;
     }
 
     function hasElseStatement(tsStatement: IfStatement) {
@@ -373,6 +363,8 @@ namespace ts.wasm {
 
             case SyntaxKind.IfStatement:
                 const tsIfStatement = <IfStatement>tsStatement;
+                wasmBlock.code.f64.startBlock();
+                wasmBlock.code.f64.addBlockType();
                 visitExpression(wasmBlock, tsIfStatement.expression);
                 wasmBlock.code.f64.breakIf(0);
                 visitStatement(wasmBlock, tsIfStatement.thenStatement);
