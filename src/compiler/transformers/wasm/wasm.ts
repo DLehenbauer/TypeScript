@@ -225,7 +225,7 @@ namespace ts.wasm {
 
         constructor(public module: WasmModule, private locals: WasmScope) {}
 
-        private get resolver() { return this.module.resolver; }
+        public get resolver() { return this.module.resolver; }
 
         /** The opcode encoder for writing opcodes into this wasm block's code entry. */
         public get code() { return this._code; }
@@ -341,7 +341,7 @@ namespace ts.wasm {
 
                     wasmBlock.code.f64.startBlock();
 
-                    const blockType = value_type.f64;
+                    const blockType = toValueTypeReturn(wasmBlock.resolver.getReturnTypeOfSignature(wasmBlock.resolver.getSignatureFromDeclaration(<FunctionDeclaration>tsBlock.parent)));
                     wasmBlock.code.f64.addBlockType(blockType);
 
                     while(hasElseStatement(tsIfStmt)) {
