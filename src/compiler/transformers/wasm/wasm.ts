@@ -394,6 +394,7 @@ namespace ts.wasm {
                 wasmBlock.code.f64.startBlock();
                 wasmBlock.code.f64.addBlockType();
                 visitExpression(wasmBlock, tsIfStatement.expression);
+                wasmBlock.code.i32.equalsZero();
                 wasmBlock.code.f64.breakIf(0);
                 visitStatement(wasmBlock, tsIfStatement.thenStatement);
                 if(addReturn) {

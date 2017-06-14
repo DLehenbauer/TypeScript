@@ -345,6 +345,8 @@ namespace ts.wasm {
         * Does not check for overflows with negative numbers. */  
         bitRightShift(): void; 
 
+        equalsZero(): void;
+
     }
 
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
@@ -388,6 +390,7 @@ namespace ts.wasm {
         bitXOR() {this.encoder.op(opcode.i32_xor);}  
         bitLeftShift() {this.encoder.op(opcode.i32_shl);}  
         bitRightShift() {this.encoder.op(opcode.i32_shr_u);} 
+        equalsZero() { this.encoder.op(opcode.i32_eqz); }
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
