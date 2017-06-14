@@ -345,8 +345,14 @@ namespace ts.wasm {
                     wasmBlock.code.f64.addBlockType(blockType);
 
                     while(hasElseStatement(tsIfStmt)) {
-                        visitStatement(wasmBlock, tsIfStmt, true);
-                        tsIfStmt = <IfStatement>tsIfStmt.elseStatement;
+                        if(hasReturnStatement(tsIfStmt)) {
+                            visitStatement(wasmBlock, tsIfStmt, false);
+                            tsIfStmt = <IfStatement>tsIfStmt.elseStatement;
+                        }
+                        else {
+                            visitStatement(wasmBlock, tsIfStmt, true);
+                            tsIfStmt = <IfStatement>tsIfStmt.elseStatement;
+                        }
                     }
                     
                     const elseStmt = <Statement>tsIfStmt;
@@ -360,6 +366,16 @@ namespace ts.wasm {
         }
     }
 
+    function hasReturnStatement(tsStatement: IfStatement) {
+        const thenStmt = <ThenStatement>tsStatement.thenStatement;
+        for(const statement of thenStmt.statements) {
+            if(statement.kind == SyntaxKind.ReturnStatement) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     function hasElseStatement(tsStatement: IfStatement) {
         let elseStatement = tsStatement.elseStatement;
         if(elseStatement) {
