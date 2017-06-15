@@ -48,14 +48,15 @@ namespace ts.wasm {
     
     }
 
+    /** Returns the opcode corresponding to each value type represented as varint7 according to the design page of wasm */
     export function valueTypeToOpcode(type?: value_type) {
         switch(type) {
             case value_type.f64:
-                return opcode.i64_add;
+                return opcode.i64_add; // opcode 7C
             case value_type.i32:
-                return opcode.i64_div_s;
+                return opcode.i64_div_s; // opcode 7F
             default:
-                return opcode.grow_memory;
+                return opcode.grow_memory; // opcode 40
         }
     }
 
@@ -368,6 +369,7 @@ namespace ts.wasm {
 
     function hasReturnStatement(tsStatement: IfStatement) {
         const thenStmt = <ThenStatement>tsStatement.thenStatement;
+
         for(const statement of thenStmt.statements) {
             if(statement.kind == SyntaxKind.ReturnStatement) {
                 return true;
@@ -378,6 +380,7 @@ namespace ts.wasm {
     
     function hasElseStatement(tsStatement: IfStatement) {
         let elseStatement = tsStatement.elseStatement;
+
         if(elseStatement) {
             return true;
         }
@@ -388,18 +391,23 @@ namespace ts.wasm {
 
     function visitStatement(wasmBlock: WasmBlock, tsStatement: Statement, addReturn?: boolean) {
         switch(tsStatement.kind) {
-
             case SyntaxKind.IfStatement:
                 const tsIfStatement = <IfStatement>tsStatement;
+
                 wasmBlock.code.f64.startBlock();
                 wasmBlock.code.f64.addBlockType();
+
                 visitExpression(wasmBlock, tsIfStatement.expression);
+
                 wasmBlock.code.i32.equalsZero();
                 wasmBlock.code.f64.breakIf(0);
+
                 visitStatement(wasmBlock, tsIfStatement.thenStatement);
+
                 if(addReturn) {
                     wasmBlock.code.f64.return();
                 }
+
                 wasmBlock.code.f64.break(1);
                 wasmBlock.code.f64.endBlock();
                 break;

@@ -307,16 +307,22 @@ namespace ts.wasm {
          *  than or equal to the second */
         comparisonLE(): void;
 
+        /** Add opcode to start a block (02) */
         startBlock(): void;
 
+        /** Adds the return type of the block */
         addBlockType(type?: value_type): void;
 
+        /** Breaks out of a number of blocks dependent on the immediate (level) and a condition */
         breakIf(level: number): void;
 
+        /** Adds opcode to return top value of the stack */
         return(): void;
 
+        /** Breaks out of a number of blocks dependent on the immediate (level) */
         break(level: number): void;
 
+        /** Adds opcode that denotes the end of a block */
         endBlock(): void;
 
     }
@@ -345,6 +351,7 @@ namespace ts.wasm {
         * Does not check for overflows with negative numbers. */  
         bitRightShift(): void; 
 
+        /** Compares the top value of the stack to zero. Returns 1 if equal to 0, and 0 if not */
         equalsZero(): void;
 
     }
