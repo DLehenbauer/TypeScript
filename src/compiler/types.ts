@@ -1558,7 +1558,9 @@ namespace ts {
 
     export type JsxChild = JsxText | JsxExpression | JsxElement | JsxSelfClosingElement;
 
+        
     export interface Statement extends Node {
+        
         _statementBrand: any;
     }
 
@@ -1625,6 +1627,10 @@ namespace ts {
         expression: Expression;
         thenStatement: Statement;
         elseStatement?: Statement;
+    }
+
+    export interface ThenStatement extends Statement {
+        statements: NodeArray<Statement>; 
     }
 
     export interface IterationStatement extends Statement {

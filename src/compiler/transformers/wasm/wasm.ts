@@ -16,21 +16,48 @@ namespace ts.wasm {
         Debug.fail(`Unexpected node '${getTextOfNode(node)}' in ${arguments.callee.caller}.  (kind='${eval(`ts.SyntaxKind[${node.kind}]`)}')`);
     }
 
-    function toValueType(type: Type) {
-        if (type.flags & TypeFlags.Intrinsic) {
-            const intrinsicType = <IntrinsicType>type;
-            switch (intrinsicType.intrinsicName) {
-                case "number":
-                    return value_type.f64;
-                case "boolean":
-                    return value_type.i32;
-                default:
-                    Debug.fail(`Unexpected intrinsic type '${intrinsicType.intrinsicName}'.`);
-                    break;
-            }
+    /** function takes in node, finds the type and then returns the appropriate opCode 
+    */
+        function toValueType(type: Type) {
+        if (type.flags & TypeFlags.NumberLike){
+            // return value_type.i32;
+            return value_type.f64;
         }
 
-        Debug.fail(`Unexpected type '${type.symbol.name}'.`);
+        else if (type.flags & TypeFlags.BooleanLike){
+            return value_type.i32;
+        }
+        else {
+            Debug.fail(`Unexpected type '${type.symbol ? type.symbol.name : "unknown"}'. (flags = '${hex32(type.flags)}')`);
+        }
+    }
+
+   function toValueTypeReturn(type: Type) {
+        if (type.flags & TypeFlags.NumberLike){
+            // return value_type.i32;
+            return value_type.f64;
+        }
+
+        else if (type.flags & TypeFlags.BooleanLike){
+            return value_type.i32;
+        }
+        else {
+            Debug.fail(`Unexpected type '${type.symbol ? type.symbol.name : "unknown"}'. (flags = '${hex32(type.flags)}')`);
+        }
+
+    
+    }
+
+    /** Returns the opcode corresponding to each value type represented as varint7 according to the design page of wasm */
+    export function valueTypeToOpcode(type?: value_type) {
+        switch(type) {
+            case value_type.f64:
+                return opcode.i64_add; // opcode 7C
+            case value_type.i32:
+                return opcode.i64_div_s; // opcode 7F
+            default:
+                return opcode.grow_memory; // opcode 40
+        }
     }
 
     /** In memory representation of a wasm module, built while traversing the TypeScript AST. */
@@ -56,10 +83,11 @@ namespace ts.wasm {
         public function(
             name: string,
             parameters: { symbol: Symbol, type: value_type }[],
+            localVariables: { symbol: Symbol, type: value_type }[],
             returns: value_type[],
             isExported: boolean
         ) {
-            const wasmFunc = new WasmFunction(this, name, parameters, returns, isExported);
+            const wasmFunc = new WasmFunction(this, name, parameters, localVariables, returns, isExported);
             this.functionDecls.push(wasmFunc);
             return wasmFunc;
         }
@@ -165,6 +193,7 @@ namespace ts.wasm {
             private module: WasmModule,
             private name: string,
             params: { symbol: Symbol, type: value_type }[],
+            localVariables: { symbol: Symbol, type: value_type }[],
             readonly returns: value_type[],
             readonly isExported: boolean
         ) {
@@ -177,7 +206,7 @@ namespace ts.wasm {
             const paramsTable = new WasmScope(/* parent: */ undefined, /* entries: */ params);
 
             // We then create a separate scope to hold any additional locals.
-            const localsTable = new WasmScope(/* parent: */ paramsTable, /* entries: */ []);
+            const localsTable = new WasmScope(/* parent: */ paramsTable, /* entries: */ localVariables);
 
             this.body = new WasmBlock(this.module, localsTable);
         }
@@ -197,9 +226,9 @@ namespace ts.wasm {
     export class WasmBlock {
         private _code: OpEncoder = new OpEncoder();
 
-        constructor(private module: WasmModule, private locals: WasmScope) {}
+        constructor(public module: WasmModule, private locals: WasmScope) {}
 
-        private get resolver() { return this.module.resolver; }
+        public get resolver() { return this.module.resolver; }
 
         /** The opcode encoder for writing opcodes into this wasm block's code entry. */
         public get code() { return this._code; }
@@ -216,10 +245,26 @@ namespace ts.wasm {
             Debug.fail(`Unresolved symbol '${symbol.name}'.`);
         }
 
+        /**Write the appropiate opcodes to set the given TypeScript symbol to the top value on the stack */
+        public setSymbol(symbol: Symbol) {
+            const localIndex = this.locals.getIndexOf(symbol);
+            if (localIndex !== undefined) {
+                this.code.set_local(localIndex);
+                return;
+            }
+
+            Debug.fail(`Unresolved symbol '${symbol.name}'.`);
+        }
+
         /** Write the appropriate opcodes to load the given TypeScript identifier and push its value
             on to the stack. */
         public loadIdentifier(tsIdentifier: Identifier) {
             this.loadSymbol(this.resolver.getSymbolAtLocation(tsIdentifier));
+        }
+
+        /** Write the appropiate opcodes to set a local variable to the top value of the stack */
+        public setIdentifier(tsIdentifier: Identifier) {
+            this.setSymbol(this.resolver.getSymbolAtLocation(tsIdentifier));
         }
 
         /** Writes this wasm block's byte code into the given code section. */
@@ -246,10 +291,12 @@ namespace ts.wasm {
         // Visit each source file, emitting it's contribution into the wasmModule.
         sourceFiles.forEach(sourceFile => visitSourceFile(wasmModule, sourceFile));
 
+        // get the data into the wasmEncoder buffer from the wasmModule passed in 
         // Wasm is implicitly 'noEmitOnError'.  Do not write the binary if any errors were encountered.
         if (diagnostics.getDiagnostics().length === 0) {
             const wasmEncoder = new Encoder();
             wasmModule.emit(wasmEncoder);
+            // write out data from buffer to outFile
             host.writeFile(outFile, wasmEncoder.buffer, /* writeByteOrderMark: */ false);
         }
     }
@@ -282,12 +329,33 @@ namespace ts.wasm {
                 };
             });
 
+        const localsIterator = tsFunc.locals.values();
+        let arr = new Array(tsFunc.locals.size - params.length);
+
+        for(var i = 0; i < params.length; i++) {
+            localsIterator.next();
+        }
+
+        for(var i = 0; i < tsFunc.locals.size - params.length; i++) {
+            arr[i] = localsIterator.next().value.valueDeclaration;
+        }
+
+        const localVariables = arr.map(
+            localDecl => {
+                return {
+                    symbol: localDecl.symbol,
+                    type: toValueType(wasmModule.resolver.getTypeOfSymbolAtLocation(localDecl.symbol, localDecl))
+                };
+            }
+        );
+   
         const wasmFunc = wasmModule.function(
             tsFunc.name.text,
             params,
+            localVariables,
             returnType.flags & TypeFlags.Void
                 ? []
-                : [ toValueType(returnType) ],
+                : [ toValueTypeReturn(returnType) ],
             isExported);
 
         visitBlock(wasmFunc.body, tsFunc.body);
@@ -308,11 +376,92 @@ namespace ts.wasm {
 
                     wasmBlock.code.return();
                     break;
+                case SyntaxKind.IfStatement:
+                    let tsIfStmt = <IfStatement>tsStatement;
 
+                    wasmBlock.code.f64.startBlock();
+
+                    const blockType = toValueTypeReturn(wasmBlock.resolver.getReturnTypeOfSignature(wasmBlock.resolver.getSignatureFromDeclaration(<FunctionDeclaration>tsBlock.parent)));
+                    wasmBlock.code.f64.addBlockType(blockType);
+
+                    while(hasElseStatement(tsIfStmt)) {
+                        if(hasReturnStatement(tsIfStmt)) {
+                            visitStatement(wasmBlock, tsIfStmt, false);
+                            tsIfStmt = <IfStatement>tsIfStmt.elseStatement;
+                        }
+                        else {
+                            visitStatement(wasmBlock, tsIfStmt, true);
+                            tsIfStmt = <IfStatement>tsIfStmt.elseStatement;
+                        }
+                    }
+                    
+                    const elseStmt = <Statement>tsIfStmt;
+                    visitStatement(wasmBlock, elseStmt);
+                    wasmBlock.code.f64.endBlock();
+                    break;
+                case SyntaxKind.VariableStatement:
+                    const tsVariableStmt = <VariableStatement>tsStatement;
+                    
+                    for(const declarationStmt of tsVariableStmt.declarationList.declarations) {
+                        visitExpression(wasmBlock, declarationStmt.initializer);
+                        wasmBlock.setIdentifier(<Identifier>declarationStmt.name);
+                    }
+                    break;
                 default:
                     unexpectedNode(tsStatement);
                     break;
             }
+        }
+    }
+
+    function hasReturnStatement(tsStatement: IfStatement) {
+        const thenStmt = <ThenStatement>tsStatement.thenStatement;
+
+        for(const statement of thenStmt.statements) {
+            if(statement.kind == SyntaxKind.ReturnStatement) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    function hasElseStatement(tsStatement: IfStatement) {
+        let elseStatement = tsStatement.elseStatement;
+
+        if(elseStatement) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    function visitStatement(wasmBlock: WasmBlock, tsStatement: Statement, addReturn?: boolean) {
+        switch(tsStatement.kind) {
+            case SyntaxKind.IfStatement:
+                const tsIfStatement = <IfStatement>tsStatement;
+
+                wasmBlock.code.f64.startBlock();
+                wasmBlock.code.f64.addBlockType();
+
+                visitExpression(wasmBlock, tsIfStatement.expression);
+
+                wasmBlock.code.i32.equalsZero();
+                wasmBlock.code.f64.breakIf(0);
+
+                visitStatement(wasmBlock, tsIfStatement.thenStatement);
+
+                if(addReturn) {
+                    wasmBlock.code.f64.return();
+                }
+
+                wasmBlock.code.f64.break(1);
+                wasmBlock.code.f64.endBlock();
+                break;
+            case SyntaxKind.Block:
+                const statementAsBlock = <Block>tsStatement;
+                visitBlock(wasmBlock, statementAsBlock);
+                break;
         }
     }
 
@@ -333,6 +482,39 @@ namespace ts.wasm {
                 break;
             case SyntaxKind.SlashToken:
                 wasmBlock.code.f64.div();
+                break;
+            case SyntaxKind.GreaterThanToken:
+                wasmBlock.code.f64.comparisonGT();
+                break;
+            case SyntaxKind.LessThanToken:
+                wasmBlock.code.f64.comparisonLT();
+                break;
+            case SyntaxKind.EqualsEqualsToken:
+                wasmBlock.code.f64.equals();
+                break;
+            case SyntaxKind.GreaterThanEqualsToken:
+                wasmBlock.code.f64.comparisonGE();
+                break;
+            case SyntaxKind.LessThanEqualsToken:
+                wasmBlock.code.f64.comparisonLE();
+                break;
+            case SyntaxKind.PercentToken:
+                wasmBlock.code.i32.rem();
+                break;
+            case SyntaxKind.BarToken:
+                wasmBlock.code.i32.bitOR();
+                break;
+            case SyntaxKind.AmpersandToken:  
+                wasmBlock.code.i32.bitAND();  
+                break;  
+            case SyntaxKind.CaretToken:  
+                wasmBlock.code.i32.bitXOR();  
+                break;  
+            case SyntaxKind.LessThanLessThanToken:  
+                wasmBlock.code.i32.bitLeftShift();  
+                break;  
+            case SyntaxKind.GreaterThanGreaterThanToken:  
+                wasmBlock.code.i32.bitRightShift();  
                 break;
             default:
                 unexpectedNode(tsOperator);

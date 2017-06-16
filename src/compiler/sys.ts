@@ -116,6 +116,7 @@ namespace ts {
             /** Node.js 'Buffer' type used internally when hashing and writing binary files. */
             interface Buffer {
                 from(bytes: number[]): Buffer;
+                length: number;
             }
 
             /** Used by createHash() and writeFile() to convert a number[] to a NodeBuffer. */
@@ -257,7 +258,8 @@ namespace ts {
                         // Otherwise, we're writing a binary file and 'data' must be a number[].
                         Debug.assert(!writeByteOrderMark,
                             "Must not set 'writeByteOrderMark' for a binary file.");
-                        _fs.writeSync(fd, toNodeBuffer(data));
+                        const asBuffer = toNodeBuffer(data);
+                        _fs.writeSync(fd, asBuffer, 0, asBuffer.length);
                     }
                 }
                 finally {
