@@ -189,6 +189,19 @@ namespace ts.wasm {
         return <external_kind>value;
     }
 
+    export const binary_NaN_high = 0x7FF00000;
+    export const binary_NaN_low = 0x00000001;
+    export const binary_Infinity_high = 0x7FF00000;
+    export const binary_Infinity_low = 0x00000000;
+
+    export function is_NaN(lowBytes : number, highBytes : number) {
+        return (lowBytes == binary_NaN_low && highBytes == binary_NaN_high);
+    }
+
+    export function is_Infinity(lowBytes : number, highBytes : number) {
+        return (lowBytes == binary_Infinity_low && highBytes == binary_Infinity_high);
+    }
+
     // Module Structure
 
     /** The module starts with a preamble  */
