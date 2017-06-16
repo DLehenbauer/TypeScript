@@ -305,6 +305,71 @@ namespace ts.wasm {
 
         /** Replace the top two values on the stack with their quotient. */
         div(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the first value is greater than the second */
+        comparisonGT(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the first value is less than the second */
+        comparisonLT(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the two values are equal */
+        equals(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the first value is greater
+         *  than or equal to the second */
+        comparisonGE(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting if the first value is less
+         *  than or equal to the second */
+        comparisonLE(): void;
+
+        /** Add opcode to start a block (02) */
+        startBlock(): void;
+
+        /** Adds the return type of the block */
+        addBlockType(type?: value_type): void;
+
+        /** Breaks out of a number of blocks dependent on the immediate (level) and a condition */
+        breakIf(level: number): void;
+
+        /** Adds opcode to return top value of the stack */
+        return(): void;
+
+        /** Breaks out of a number of blocks dependent on the immediate (level) */
+        break(level: number): void;
+
+        /** Adds opcode that denotes the end of a block */
+        endBlock(): void;
+
+    }
+
+    /* Common base for 32 int numeric operations */
+    export interface NumericOpEncoder32 {
+        /** Push the immediate constant 'value' on to the stack. */
+        const(value: number): void;
+
+        /** Replace the top two values on the stack with their remainder. */
+        rem(): void;
+
+        /** Replace the top two values on the stack with an int32 denoting the bitwise OR of the two values. */  
+        bitOR(): void;  
+
+        /** Replace the top two values on the stack with an int32 denoting the bitwise AND of the two values. */  
+        bitAND(): void;  
+
+        /** Replace the top two values on the stack with an int32 denoting the bitwise XOR of the two values. */  
+        bitXOR(): void;  
+
+        /** Replace the top two values on the stack with an int32 denoting the first value left-shifted by the number of bits indicated by the second value. */  
+        bitLeftShift(): void; 
+     
+        /** Replace the top two values on the stack with an int32 denoting the first value right-shifted by the number of bits indicated by the second value.  
+        * Does not check for overflows with negative numbers. */  
+        bitRightShift(): void; 
+
+        /** Compares the top value of the stack to zero. Returns 1 if equal to 0, and 0 if not */
+        equalsZero(): void;
+
     }
 
     /** Private implementation of NumericOpEncoder for encoding operations on 64b floating point numbers. */
@@ -319,6 +384,38 @@ namespace ts.wasm {
         sub() { this.encoder.op(opcode.f64_sub); }
         mul() { this.encoder.op(opcode.f64_mul); }
         div() { this.encoder.op(opcode.f64_div); }
+        comparisonGT() { this.encoder.op(opcode.f64_gt); }
+        comparisonLT() { this.encoder.op(opcode.f64_lt); }
+        equals() { this.encoder.op(opcode.f64_eq); }
+        comparisonGE() { this.encoder.op(opcode.f64_ge); }
+        comparisonLE() { this.encoder.op(opcode.f64_le); }
+        startBlock() { this.encoder.op(opcode.block); }
+        addBlockType(type?: value_type) { this.encoder.op(valueTypeToOpcode(type)); }
+        breakIf(level: number) { 
+            this.encoder.op(opcode.br_if);
+            this.encoder.uint8(level);
+        }
+        return() { this.encoder.op(opcode.return); }
+        break(level: number) { 
+            this.encoder.op(opcode.br);
+            this.encoder.uint8(level);
+        }
+        endBlock() { this.encoder.op(opcode.end); }
+    }
+
+    /** Private implementation of NumericOpEncoder32 for encoding operations on 32b integers. */
+    class I320pEncoder implements NumericOpEncoder32 {
+        constructor (private encoder: RawOpEncoder) {}
+
+        // NumericOpEncoder32 implementation
+        const(value: number) { this.encoder.op_i32(opcode.i32_const, value); }
+        rem() { this.encoder.op(opcode.i32_rem_s); }
+        bitOR() { this.encoder.op(opcode.i32_or); }  
+        bitAND() { this.encoder.op(opcode.i32_and); }  
+        bitXOR() {this.encoder.op(opcode.i32_xor);}  
+        bitLeftShift() {this.encoder.op(opcode.i32_shl);}  
+        bitRightShift() {this.encoder.op(opcode.i32_shr_u);} 
+        equalsZero() { this.encoder.op(opcode.i32_eqz); }
     }
 
     /** Internal wrapper around 'Encoder' that surfaces helpers for writing opcodes and immediates.
@@ -338,7 +435,7 @@ namespace ts.wasm {
             this.encoder.varuint32(immediate);
         }
 
-        /** Write the given opcode with one 64b floating point immediate.  */
+        /** Write the given opcode with one 64b floating point immediate. */
         public op_f64(opcode: opcode, f64: number) {
             this.encoder.op(opcode);
             this.encoder.float64(f64);
@@ -356,6 +453,17 @@ namespace ts.wasm {
             this.encoder.const_Infinity();
         }
 
+        /** Write the given opcode with one 32b integer (non-floating type) immediate. */
+        public op_i32(opcode: opcode, i32: number) {
+            this.encoder.op(opcode);
+            this.encoder.varint32(i32);
+        }
+
+        /** Write the given immediate as an unsigned 8b integer, as-is. */
+        public uint8(u8: number) {
+            this.encoder.uint8(u8);
+        }
+
         /** Returns the array of bytes containing the encoded byte code. */
         public get buffer() {
             return this.encoder.buffer;
@@ -367,6 +475,9 @@ namespace ts.wasm {
 
         /** Operators for 64b floating point numbers. */
         readonly f64: NumericOpEncoder = new F64OpEncoder(this.encoder);
+
+        /** Operators for 32b integers */
+        readonly i32: NumericOpEncoder32 = new I320pEncoder(this.encoder);
 
         /** Array of bytes containing the encoded opcodes and immediates. */
         public get buffer() { return this.encoder.buffer; }
@@ -384,5 +495,11 @@ namespace ts.wasm {
 
         /** Push the local/function parameter with the given 'local_index' on to the stack. */
         public get_local(local_index: number) { this.encoder.op_vu32(opcode.get_local, local_index); }
+
+        /**Set the local variable with the given "local_index" to the top value of the stack */
+        public set_local(local_index: number) { 
+            this.encoder.op(opcode.set_local);
+            this.encoder.uint8(local_index);
+        }
     }
 }

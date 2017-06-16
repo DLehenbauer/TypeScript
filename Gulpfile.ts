@@ -389,7 +389,7 @@ gulp.task(builtLocalCompiler, false, [servicesFile], () => {
         .pipe(sourcemaps.init())
         .pipe(localCompilerProject())
         .pipe(prependCopyright())
-        .pipe(sourcemaps.write("."))
+        .pipe(sourcemaps.write('.', {includeContent: false, sourceRoot: '.'}))
         .pipe(gulp.dest("src/compiler"));
 });
 
@@ -555,7 +555,7 @@ gulp.task(run, false, [servicesFile], () => {
         .pipe(newer(run))
         .pipe(sourcemaps.init())
         .pipe(testProject())
-        .pipe(sourcemaps.write(".", { includeContent: false, sourceRoot: "../../" }))
+        .pipe(sourcemaps.write(".", { includeContent: false, sourceRoot: "." }))
         .pipe(gulp.dest("src/harness"));
 });
 
