@@ -83,10 +83,11 @@ namespace ts.wasm {
         public function(
             name: string,
             parameters: { symbol: Symbol, type: value_type }[],
+            localVariables: { symbol: Symbol, type: value_type }[],
             returns: value_type[],
             isExported: boolean
         ) {
-            const wasmFunc = new WasmFunction(this, name, parameters, returns, isExported);
+            const wasmFunc = new WasmFunction(this, name, parameters, localVariables, returns, isExported);
             this.functionDecls.push(wasmFunc);
             return wasmFunc;
         }
@@ -192,6 +193,7 @@ namespace ts.wasm {
             private module: WasmModule,
             private name: string,
             params: { symbol: Symbol, type: value_type }[],
+            localVariables: { symbol: Symbol, type: value_type }[],
             readonly returns: value_type[],
             readonly isExported: boolean
         ) {
@@ -204,7 +206,7 @@ namespace ts.wasm {
             const paramsTable = new WasmScope(/* parent: */ undefined, /* entries: */ params);
 
             // We then create a separate scope to hold any additional locals.
-            const localsTable = new WasmScope(/* parent: */ paramsTable, /* entries: */ []);
+            const localsTable = new WasmScope(/* parent: */ paramsTable, /* entries: */ localVariables);
 
             this.body = new WasmBlock(this.module, localsTable);
         }
@@ -243,10 +245,26 @@ namespace ts.wasm {
             Debug.fail(`Unresolved symbol '${symbol.name}'.`);
         }
 
+        /**Write the appropiate opcodes to set the given TypeScript symbol to the top value on the stack */
+        public setSymbol(symbol: Symbol) {
+            const localIndex = this.locals.getIndexOf(symbol);
+            if (localIndex !== undefined) {
+                this.code.set_local(localIndex);
+                return;
+            }
+
+            Debug.fail(`Unresolved symbol '${symbol.name}'.`);
+        }
+
         /** Write the appropriate opcodes to load the given TypeScript identifier and push its value
             on to the stack. */
         public loadIdentifier(tsIdentifier: Identifier) {
             this.loadSymbol(this.resolver.getSymbolAtLocation(tsIdentifier));
+        }
+
+        /** Write the appropiate opcodes to set a local variable to the top value of the stack */
+        public setIdentifier(tsIdentifier: Identifier) {
+            this.setSymbol(this.resolver.getSymbolAtLocation(tsIdentifier));
         }
 
         /** Writes this wasm block's byte code into the given code section. */
@@ -307,16 +325,37 @@ namespace ts.wasm {
             paramDecl => {
                 return {
                     symbol: paramDecl.symbol,
-                    type: toValueTypeReturn(wasmModule.resolver.getTypeOfSymbolAtLocation(paramDecl.symbol, paramDecl))
+                    type: toValueType(wasmModule.resolver.getTypeOfSymbolAtLocation(paramDecl.symbol, paramDecl))
                 };
             });
 
+        const localsIterator = tsFunc.locals.values();
+        let arr = new Array(tsFunc.locals.size - params.length);
+
+        for(var i = 0; i < params.length; i++) {
+            localsIterator.next();
+        }
+
+        for(var i = 0; i < tsFunc.locals.size - params.length; i++) {
+            arr[i] = localsIterator.next().value.valueDeclaration;
+        }
+
+        const localVariables = arr.map(
+            localDecl => {
+                return {
+                    symbol: localDecl.symbol,
+                    type: toValueType(wasmModule.resolver.getTypeOfSymbolAtLocation(localDecl.symbol, localDecl))
+                };
+            }
+        );
+   
         const wasmFunc = wasmModule.function(
             tsFunc.name.text,
             params,
+            localVariables,
             returnType.flags & TypeFlags.Void
                 ? []
-                : [ toValueType(returnType) ],
+                : [ toValueTypeReturn(returnType) ],
             isExported);
 
         visitBlock(wasmFunc.body, tsFunc.body);
@@ -359,6 +398,14 @@ namespace ts.wasm {
                     const elseStmt = <Statement>tsIfStmt;
                     visitStatement(wasmBlock, elseStmt);
                     wasmBlock.code.f64.endBlock();
+                    break;
+                case SyntaxKind.VariableStatement:
+                    const tsVariableStmt = <VariableStatement>tsStatement;
+                    
+                    for(const declarationStmt of tsVariableStmt.declarationList.declarations) {
+                        visitExpression(wasmBlock, declarationStmt.initializer);
+                        wasmBlock.setIdentifier(<Identifier>declarationStmt.name);
+                    }
                     break;
                 default:
                     unexpectedNode(tsStatement);

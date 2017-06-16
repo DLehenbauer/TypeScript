@@ -465,5 +465,11 @@ namespace ts.wasm {
 
         /** Push the local/function parameter with the given 'local_index' on to the stack. */
         public get_local(local_index: number) { this.encoder.op_vu32(opcode.get_local, local_index); }
+
+        /**Set the local variable with the given "local_index" to the top value of the stack */
+        public set_local(local_index: number) { 
+            this.encoder.op(opcode.set_local);
+            this.encoder.uint8(local_index);
+        }
     }
 }
