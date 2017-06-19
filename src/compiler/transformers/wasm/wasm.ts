@@ -542,7 +542,7 @@ namespace ts.wasm {
     }
 
     function visitIdentifier(wasmBlock: WasmBlock, tsIdentifier: Identifier) {
-        switch(tsIdentifier.text) {
+        switch(ts.unescapeIdentifier(tsIdentifier.text)) {
             case "NaN":
                 wasmBlock.code.f64.const_NaN();
                 break;
