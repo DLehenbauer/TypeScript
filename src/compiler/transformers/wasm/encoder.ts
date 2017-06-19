@@ -47,7 +47,17 @@ namespace ts.wasm {
             this.uint32(this.f64Bytes.getUint32(4, /* little-endian */ true));  // Emit bytes 4-7
         }
 
-        
+        /** Write 8-byte IEEE 754 double-precision NaN */
+        public const_NaN() {
+            this.uint32(binary_NaN_low);
+            this.uint32(binary_NaN_high);
+        }
+
+        /** Write 8-byte IEEE 754 double-precision Infinity */
+        public const_Infinity() {
+            this.uint32(binary_Infinity_low);
+            this.uint32(binary_Infinity_high);
+        }
 
         /** Write an unsigned 32b integer as LEB128. */
         public varuint32(u32: number) {
@@ -278,6 +288,12 @@ namespace ts.wasm {
         /** Push the immediate constant 'value' on to the stack. */
         const(value: number): void;
 
+        /** Push NaN on to the stack */
+        const_NaN(): void;
+
+        /** Push Infinity on to the stack */
+        const_Infinity(): void;
+
         /** Replace the top two values on the stack with their sum. */
         add(): void;
 
@@ -362,6 +378,8 @@ namespace ts.wasm {
 
         // NumericOpEncoder implementation
         const(value: number) { this.encoder.op_f64(opcode.f64_const, value); }
+        const_NaN() { this.encoder.op_const_NaN(); }
+        const_Infinity() { this.encoder.op_const_Infinity(); }
         add() { this.encoder.op(opcode.f64_add); }
         sub() { this.encoder.op(opcode.f64_sub); }
         mul() { this.encoder.op(opcode.f64_mul); }
@@ -421,6 +439,18 @@ namespace ts.wasm {
         public op_f64(opcode: opcode, f64: number) {
             this.encoder.op(opcode);
             this.encoder.float64(f64);
+        }
+
+        /** Write the f64_const opcode with immediate for NaN */
+        public op_const_NaN() {
+            this.encoder.op(opcode.f64_const);
+            this.encoder.const_NaN();
+        }
+
+        /** Write the f64_const opcode with immediate for Infinity */
+        public op_const_Infinity() {
+            this.encoder.op(opcode.f64_const);
+            this.encoder.const_Infinity();
         }
 
         /** Write the given opcode with one 32b integer (non-floating type) immediate. */

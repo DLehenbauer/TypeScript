@@ -189,6 +189,14 @@ namespace ts.wasm {
         return <external_kind>value;
     }
 
+    /** JavaScript only supports 53 bit integers so these 64 bit constants must 
+     *  be represented by two variables.
+    */
+    export const binary_NaN_high = 0x7FF00000;
+    export const binary_NaN_low = 0x00000001;
+    export const binary_Infinity_high = 0x7FF00000;
+    export const binary_Infinity_low = 0x00000000;
+
     // Module Structure
 
     /** The module starts with a preamble  */

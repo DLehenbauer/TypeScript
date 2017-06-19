@@ -1,0 +1,15 @@
+=== tests/cases/compiler/wasm_numeric_identifiers.ts ===
+
+export function getNaN() { return NaN; }
+>getNaN : () => number
+>NaN : number
+
+export function getInfinity() { return Infinity; }
+>getInfinity : () => number
+>Infinity : number
+
+export function getNegativeInfinity() { return -Infinity; }
+>getNegativeInfinity : () => number
+>-Infinity : number
+>Infinity : number
+

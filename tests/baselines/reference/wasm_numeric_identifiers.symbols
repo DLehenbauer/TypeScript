@@ -1,0 +1,14 @@
+=== tests/cases/compiler/wasm_numeric_identifiers.ts ===
+
+export function getNaN() { return NaN; }
+>getNaN : Symbol(getNaN, Decl(wasm_numeric_identifiers.ts, 0, 0))
+>NaN : Symbol(NaN, Decl(lib.d.ts, --, --))
+
+export function getInfinity() { return Infinity; }
+>getInfinity : Symbol(getInfinity, Decl(wasm_numeric_identifiers.ts, 1, 40))
+>Infinity : Symbol(Infinity, Decl(lib.d.ts, --, --))
+
+export function getNegativeInfinity() { return -Infinity; }
+>getNegativeInfinity : Symbol(getNegativeInfinity, Decl(wasm_numeric_identifiers.ts, 3, 50))
+>Infinity : Symbol(Infinity, Decl(lib.d.ts, --, --))
+

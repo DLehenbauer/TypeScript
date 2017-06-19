@@ -541,6 +541,19 @@ namespace ts.wasm {
         wasmBlock.code.f64.const(value);
     }
 
+    function visitIdentifier(wasmBlock: WasmBlock, tsIdentifier: Identifier) {
+        switch(ts.unescapeIdentifier(tsIdentifier.text)) {
+            case "NaN":
+                wasmBlock.code.f64.const_NaN();
+                break;
+            case "Infinity":
+                wasmBlock.code.f64.const_Infinity();
+                break;
+            default:
+                wasmBlock.loadIdentifier(tsIdentifier);
+        }
+    }
+
     function visitExpression(wasmBlock: WasmBlock, tsExpression: Expression) {
         switch (tsExpression.kind) {
             case SyntaxKind.BinaryExpression:
@@ -550,7 +563,7 @@ namespace ts.wasm {
                 visitPrefixUnaryExpression(wasmBlock, <PrefixUnaryExpression>tsExpression);
                 break;
             case SyntaxKind.Identifier:
-                wasmBlock.loadIdentifier(<Identifier>tsExpression);
+                visitIdentifier(wasmBlock, <Identifier>tsExpression);
                 break;
             case SyntaxKind.ParenthesizedExpression:
                 visitExpression(wasmBlock, (<ParenthesizedExpression>tsExpression).expression);
